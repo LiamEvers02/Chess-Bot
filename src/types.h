@@ -1,3 +1,4 @@
+ // This file defines the fundamental types and enums used throughout the chess game implementation
  #pragma once
 
  #include <cstdint>
@@ -133,4 +134,4 @@ enum MoveType : int {
     PROMOTION = 1 << 14,
     EN_PASSANT = 1 << 15,
     CASTLING = 3 << 14
-}
+};

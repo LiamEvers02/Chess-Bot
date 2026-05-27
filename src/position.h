@@ -1,9 +1,11 @@
+// This file defines the Position struct and related functions for managing the state of a chess game
 #pragma once
 
 #include "types.h"
 #include "move.h"
 #include <string>
 
+// StateInfo struct to store information needed for move undoing
 struct StateInfo {
     CastlingRights castlingRights;
     Square enPassantSquare;
@@ -11,6 +13,7 @@ struct StateInfo {
     Piece capturedPiece;
 };
 
+// Position struct representing the current state of the chess game
 struct Position {
     constexpr Piece piece_on(Square s) const { return board[s]; }
     constexpr bool empty(Square s) const { return board[s] == NO_PIECE; }
@@ -39,6 +42,7 @@ struct Position {
     int historyPly;
 };
 
+// Functions for setting up and printing the position
 void set(Position& pos, const std::string& fen);
 void print(const Position& pos);
 
