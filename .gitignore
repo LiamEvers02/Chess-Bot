@@ -1,0 +1,16 @@
+# Visual Studio CMake build output
+out/
+
+# Visual Studio local settings
+.vs/
+
+# Compiled object files
+*.obj
+*.o
+
+# Compiled libraries
+*.lib
+*.a
+
+# Executables
+*.exe
