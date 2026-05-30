@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(chess_core
     src/position.cpp
+    src/movegen.cpp
 )
 target_include_directories(chess_core PUBLIC src)
 

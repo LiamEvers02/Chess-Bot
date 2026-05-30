@@ -1,5 +1,21 @@
 #include <gtest/gtest.h>
-#include "../src/position.h"
+#include "position.h"
+#include "movegen.h"
+
+// Helper: returns true if all observable position state matches
+static bool positionsEqual(const Position& a, const Position& b) {
+    for (Square s = A1; s < SQUARE_NB; s = Square(s + 1))
+        if (a.board[s] != b.board[s]) return false;
+    for (int i = 0; i < PIECE_TYPE_NB; ++i)
+        if (a.byType[i] != b.byType[i]) return false;
+    for (int i = 0; i < COLOR_NB; ++i)
+        if (a.byColor[i] != b.byColor[i]) return false;
+    return a.sideToMove      == b.sideToMove
+        && a.castlingRights  == b.castlingRights
+        && a.enPassantSquare == b.enPassantSquare
+        && a.halfMoveClock   == b.halfMoveClock
+        && a.fullMoveNumber  == b.fullMoveNumber;
+}
 
 TEST(PositionTest, FenStartingPosition){
     Position pos;
@@ -52,4 +68,127 @@ TEST(PositionTest, FenCastlingRights){
     EXPECT_TRUE(pos.can_castle(BLACK_KINGSIDE));
     EXPECT_FALSE(pos.can_castle(WHITE_QUEENSIDE));
     EXPECT_FALSE(pos.can_castle(BLACK_QUEENSIDE));
+}
+
+// --- do_move / undo_move tests ---
+
+TEST(MakeMoveTest, NormalMove) {
+    Position pos;
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Position before = pos;
+
+    Move m = make_move(E2, E4);
+    do_move(pos, m);
+
+    EXPECT_EQ(pos.piece_on(E2), NO_PIECE);
+    EXPECT_EQ(pos.piece_on(E4), W_PAWN);
+    EXPECT_EQ(pos.side_to_move(), BLACK);
+    EXPECT_EQ(pos.ep_square(), E3);
+
+    undo_move(pos, m);
+    EXPECT_TRUE(positionsEqual(pos, before));
+}
+
+TEST(MakeMoveTest, Capture) {
+    Position pos;
+    // White pawn on e5, black pawn on d6
+    set(pos, "rnbqkbnr/ppp1pppp/3p4/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1");
+    Position before = pos;
+
+    Move m = make_move(E5, D6);
+    do_move(pos, m);
+
+    EXPECT_EQ(pos.piece_on(E5), NO_PIECE);
+    EXPECT_EQ(pos.piece_on(D6), W_PAWN);
+    EXPECT_EQ(pos.side_to_move(), BLACK);
+    EXPECT_EQ(pos.halfMoveClock, 0); // resets on capture
+
+    undo_move(pos, m);
+    EXPECT_TRUE(positionsEqual(pos, before));
+}
+
+TEST(MakeMoveTest, EnPassant) {
+    Position pos;
+    // White pawn on e5, black pawn just double-pushed to d5, ep square is d6
+    set(pos, "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1");
+    Position before = pos;
+
+    Move m = make_move<EN_PASSANT>(E5, D6);
+    do_move(pos, m);
+
+    EXPECT_EQ(pos.piece_on(E5), NO_PIECE);
+    EXPECT_EQ(pos.piece_on(D5), NO_PIECE); // captured pawn removed
+    EXPECT_EQ(pos.piece_on(D6), W_PAWN);
+
+    undo_move(pos, m);
+    EXPECT_TRUE(positionsEqual(pos, before));
+}
+
+TEST(MakeMoveTest, KingsideCastle) {
+    Position pos;
+    // Kingside castling: squares f1, g1 clear
+    set(pos, "rnbqk2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1");
+    Position before = pos;
+
+    Move m = make_move<CASTLING>(E1, G1);
+    do_move(pos, m);
+
+    EXPECT_EQ(pos.piece_on(E1), NO_PIECE);
+    EXPECT_EQ(pos.piece_on(G1), W_KING);
+    EXPECT_EQ(pos.piece_on(H1), NO_PIECE);
+    EXPECT_EQ(pos.piece_on(F1), W_ROOK);
+    EXPECT_FALSE(pos.can_castle(WHITE_KINGSIDE));
+    EXPECT_FALSE(pos.can_castle(WHITE_QUEENSIDE));
+
+    undo_move(pos, m);
+    EXPECT_TRUE(positionsEqual(pos, before));
+}
+
+TEST(MakeMoveTest, QueensideCastle) {
+    Position pos;
+    // Queenside castling: squares b1, c1, d1 clear
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3KBNR w KQkq - 0 1");
+    Position before = pos;
+
+    Move m = make_move<CASTLING>(E1, C1);
+    do_move(pos, m);
+
+    EXPECT_EQ(pos.piece_on(E1), NO_PIECE);
+    EXPECT_EQ(pos.piece_on(C1), W_KING);
+    EXPECT_EQ(pos.piece_on(A1), NO_PIECE);
+    EXPECT_EQ(pos.piece_on(D1), W_ROOK);
+
+    undo_move(pos, m);
+    EXPECT_TRUE(positionsEqual(pos, before));
+}
+
+TEST(MakeMoveTest, Promotion) {
+    Position pos;
+    // White pawn on e7, ready to promote
+    set(pos, "4k3/4P3/8/8/8/8/8/4K3 w - - 0 1");
+    Position before = pos;
+
+    Move m = make_move<PROMOTION>(E7, E8, QUEEN);
+    do_move(pos, m);
+
+    EXPECT_EQ(pos.piece_on(E7), NO_PIECE);
+    EXPECT_EQ(pos.piece_on(E8), W_QUEEN);
+    EXPECT_EQ(pos.halfMoveClock, 0);
+
+    undo_move(pos, m);
+    EXPECT_TRUE(positionsEqual(pos, before));
+}
+
+TEST(MakeMoveTest, CastlingRightsRevokedOnKingMove) {
+    Position pos;
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+    // Move king — both castling rights should be lost
+    Move m = make_move(E1, E2);
+    do_move(pos, m);
+
+    EXPECT_FALSE(pos.can_castle(WHITE_KINGSIDE));
+    EXPECT_FALSE(pos.can_castle(WHITE_QUEENSIDE));
+    EXPECT_TRUE(pos.can_castle(BLACK_KINGSIDE));
+    EXPECT_TRUE(pos.can_castle(BLACK_QUEENSIDE));
 }
