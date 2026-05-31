@@ -85,6 +85,12 @@ constexpr Square make_square(int file, int rank) {
     return static_cast<Square>((rank << 3) | file);
 }
 
+#ifdef _MSC_VER
+    inline Square lsb(Bitboard b) { unsigned long idx; _BitScanForward64(&idx, b); return Square(idx); }
+#else
+    inline Square lsb(Bitboard b) { return Square(__builtin_ctzll(b)); }
+#endif
+
 // File and Rank enums
 enum File : int {
     FILE_A, FILE_B, FILE_C, FILE_D,
@@ -106,7 +112,7 @@ enum Direction : int {
     WEST = -1,
     NORTH_EAST = 9,
     NORTH_WEST = 7,
-    SOTUH_EAST = -7,
+    SOUTH_EAST = -7,
     SOUTH_WEST = -9
 };
 
@@ -133,7 +139,7 @@ constexpr CastlingRights operator&(CastlingRights a, CastlingRights b) {
     return static_cast<CastlingRights>(static_cast<int>(a) & static_cast<int>(b));
 }
 
-constexpr CastlingRights operator~(CastlingRights a) {
+constexpr CastlingRights remove_castling(CastlingRights a) {
     return static_cast<CastlingRights>(~static_cast<int>(a) & ANY_CASTLING);
 }
 

@@ -1,5 +1,6 @@
 #include "attacks.h"
 
+// Masks for file and rank bitboards to prevent wraparound in attack generation
 static constexpr Bitboard FILE_A_BB = 0x0101010101010101ULL;
 static constexpr Bitboard FILE_B_BB = 0x0202020202020202ULL;
 static constexpr Bitboard FILE_G_BB = 0x4040404040404040ULL;
@@ -7,12 +8,14 @@ static constexpr Bitboard FILE_H_BB = 0x8080808080808080ULL;
 static constexpr Bitboard RANK_1_BB = 0X00000000000000FFULL;
 static constexpr Bitboard RANK_8_BB = 0xFF00000000000000ULL;
 
+// Precomputed attack bitboards for knights, kings, and pawns
 Bitboard KNIGHT_ATTACKS[SQUARE_NB];
 Bitboard KING_ATTACKS[SQUARE_NB];
 Bitboard PAWN_ATTACKS[COLOR_NB][SQUARE_NB];
 Bitboard BISHOP_ATTACKS[SQUARE_NB];
 Bitboard ROOK_ATTACKS[SQUARE_NB];
 
+// Initialize the attack tables for knights, kings, and pawns
 void init_attacks() {
     for (Square s = A1; s < SQUARE_NB; s = Square(s + 1)) {
         Bitboard b = Bitboard(1) << s;
@@ -44,6 +47,7 @@ void init_attacks() {
     }
 }
 
+// Generate sliding attacks for bishops and rooks using ray-casting
 Bitboard bishop_attacks(Square s, Bitboard occupied){
     Bitboard attacks = 0;
     Bitboard b;
@@ -62,6 +66,7 @@ Bitboard bishop_attacks(Square s, Bitboard occupied){
     while (b & ~FILE_A_BB) { b >>= 9; attacks |= b; if (b & occupied) break;}
     return attacks;
 }
+
 Bitboard rook_attacks(Square s, Bitboard occupied){
     Bitboard attacks = 0;
     Bitboard b;
@@ -84,6 +89,7 @@ Bitboard rook_attacks(Square s, Bitboard occupied){
 Bitboard queen_attacks(Square s, Bitboard occupied){
     return rook_attacks(s, occupied) | bishop_attacks(s, occupied);
 }
+
 bool is_square_attacked(const Position& pos, Square s, Color by) {
     Bitboard occ = pos.pieces(WHITE) | pos.pieces(BLACK);
     if (KNIGHT_ATTACKS[s] & pos.pieces(by, KNIGHT)) return true;
@@ -92,6 +98,5 @@ bool is_square_attacked(const Position& pos, Square s, Color by) {
     if (bishop_attacks(s, occ) & pos.pieces(by, BISHOP)) return true;
     if (rook_attacks(s, occ) & pos.pieces(by, ROOK)) return true;
     if (queen_attacks(s, occ) & pos.pieces(by, QUEEN)) return true;
-    // TODO: sliding pieces
     return false;
 }

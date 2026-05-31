@@ -244,3 +244,127 @@ TEST(AttackTest, BishopAttacksBlocked){
     EXPECT_TRUE(atk & (Bitboard(1) << B6));
     EXPECT_FALSE(atk & (Bitboard(1) << A7));
 }
+
+// --- generate_moves pawn tests ---
+
+TEST(PawnMoveTest, SinglePush) {
+    init_attacks();
+    Position pos;
+    set(pos, "8/8/8/8/8/8/4P3/8 w - - 0 1");
+    auto moves = generate_moves(pos);
+    // E2 can push to E3 and E4 (double push)
+    bool foundE3 = false, foundE4 = false;
+    for (auto m : moves) {
+        if (from_sq(m) == E2 && to_sq(m) == E3) foundE3 = true;
+        if (from_sq(m) == E2 && to_sq(m) == E4) foundE4 = true;
+    }
+    EXPECT_TRUE(foundE3);
+    EXPECT_TRUE(foundE4);
+}
+
+TEST(PawnMoveTest, BlockedPawn) {
+    init_attacks();
+    Position pos;
+    // Pawn blocked by own piece directly in front
+    set(pos, "8/8/8/8/8/4P3/4P3/8 w - - 0 1");
+    auto moves = generate_moves(pos);
+    // E2 pawn is blocked by E3 pawn — no pushes from E2
+    for (auto m : moves)
+        EXPECT_NE(from_sq(m), E2);
+}
+
+TEST(PawnMoveTest, DoublePushOnlyFromRank2) {
+    init_attacks();
+    Position pos;
+    // Pawn already advanced to rank 3 — no double push
+    set(pos, "8/8/8/8/8/4P3/8/8 w - - 0 1");
+    auto moves = generate_moves(pos);
+    bool foundDoubleJump = false;
+    for (auto m : moves)
+        if (from_sq(m) == E3 && to_sq(m) == E5) foundDoubleJump = true;
+    EXPECT_FALSE(foundDoubleJump);
+}
+
+TEST(PawnMoveTest, Capture) {
+    init_attacks();
+    Position pos;
+    // White pawn on E4, black pawns on D5 and F5
+    set(pos, "8/8/8/3p1p2/4P3/8/8/8 w - - 0 1");
+    auto moves = generate_moves(pos);
+    bool foundD5 = false, foundF5 = false;
+    for (auto m : moves) {
+        if (from_sq(m) == E4 && to_sq(m) == D5) foundD5 = true;
+        if (from_sq(m) == E4 && to_sq(m) == F5) foundF5 = true;
+    }
+    EXPECT_TRUE(foundD5);
+    EXPECT_TRUE(foundF5);
+}
+
+TEST(PawnMoveTest, EnPassant) {
+    init_attacks();
+    Position pos;
+    // White pawn E5, black pawn just pushed to D5, ep square D6
+    set(pos, "8/8/8/3pP3/8/8/8/8 w - d6 0 1");
+    auto moves = generate_moves(pos);
+    bool foundEP = false;
+    for (auto m : moves)
+        if (from_sq(m) == E5 && to_sq(m) == D6 && type_of(m) == EN_PASSANT) foundEP = true;
+    EXPECT_TRUE(foundEP);
+}
+
+TEST(PawnMoveTest, PromotionEmitsFourMoves) {
+    init_attacks();
+    Position pos;
+    // White pawn on E7, clear path to E8
+    set(pos, "8/4P3/8/8/8/8/8/8 w - - 0 1");
+    auto moves = generate_moves(pos);
+    int promoCount = 0;
+    for (auto m : moves)
+        if (from_sq(m) == E7 && to_sq(m) == E8 && type_of(m) == PROMOTION) promoCount++;
+    EXPECT_EQ(promoCount, 4);
+}
+
+TEST(MoveGenTest, StartingPosition) {
+    init_attacks();
+    Position pos;
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    auto moves = generate_moves(pos);
+    EXPECT_EQ(moves.size(), 20); // 16 pawn moves + 4 knight moves
+}
+
+TEST(MoveGenTest, StartingPositionLegal) {
+    init_attacks();
+    Position pos;
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    auto moves = generate_legal_moves(pos);
+    EXPECT_EQ(moves.size(), 20); // all moves are legal in the starting position
+}
+
+TEST(PerftTest, Depth1) {
+    init_attacks();
+    Position pos;
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    EXPECT_EQ(perft(pos, 1), 20);
+}
+
+TEST(PerftTest, Depth2) {
+    init_attacks();
+    Position pos;
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    EXPECT_EQ(perft(pos, 2), 400ULL);
+}
+
+TEST(PerftTest, Depth3) {
+    init_attacks();
+    Position pos;
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    EXPECT_EQ(perft(pos, 3), 8902ULL);
+}
+
+TEST(PerftTest, Depth4) {
+    init_attacks();
+    Position pos;
+    set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    EXPECT_EQ(perft(pos, 4), 197281ULL);
+}
+

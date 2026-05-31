@@ -2,6 +2,7 @@
 
 #include "position.h"
 
+// This file defines functions for generating attack bitboards for different piece types and checking if a square is attacked
 extern Bitboard KNIGHT_ATTACKS[SQUARE_NB];
 extern Bitboard KING_ATTACKS[SQUARE_NB];
 extern Bitboard PAWN_ATTACKS[COLOR_NB][SQUARE_NB];

@@ -25,3 +25,5 @@ target_link_libraries(position_test PRIVATE chess_core GTest::gtest_main)
 
 add_test(NAME position_test COMMAND position_test)
 
+add_executable(chess_bot src/main.cpp src/uci.cpp)
+target_link_libraries(chess_bot PRIVATE chess_core)
