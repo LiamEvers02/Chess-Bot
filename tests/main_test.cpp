@@ -192,3 +192,55 @@ TEST(MakeMoveTest, CastlingRightsRevokedOnKingMove) {
     EXPECT_TRUE(pos.can_castle(BLACK_KINGSIDE));
     EXPECT_TRUE(pos.can_castle(BLACK_QUEENSIDE));
 }
+
+TEST(AttackTest, KnightCenter){
+    init_attacks();
+    EXPECT_EQ(popcount(KNIGHT_ATTACKS[E4]), 8);
+}
+
+TEST(AttackTest, KnightCorner){
+    init_attacks();
+    EXPECT_EQ(popcount(KNIGHT_ATTACKS[A1]), 2);
+}
+
+TEST(AttackTest, KingCenter){
+    init_attacks();
+    EXPECT_EQ(popcount(KING_ATTACKS[E4]), 8);
+}
+
+TEST(AttackTest, KingCorner){
+    init_attacks();
+    EXPECT_EQ(popcount(KING_ATTACKS[A1]), 3);
+}
+
+TEST(AttackTest, PawnWhiteCenter){
+    init_attacks();
+    EXPECT_EQ(popcount(PAWN_ATTACKS[WHITE][E4]), 2);
+}
+
+TEST(AttackTest, PawnBlackCenter){
+    init_attacks();
+    EXPECT_EQ(popcount(PAWN_ATTACKS[BLACK][E4]), 2);
+}
+
+TEST(AttackTest, RookAttacksEmpty){
+    EXPECT_EQ(popcount(rook_attacks(A1, 0)), 14);
+}
+
+TEST(AttackTest, RookAttacksBlocked){
+    Bitboard occ = Bitboard(1) << A4;
+    Bitboard atk = rook_attacks(A1, occ);
+    EXPECT_TRUE(atk & (Bitboard(1) << A4));
+    EXPECT_FALSE(atk & (Bitboard(1) << A5));
+}
+
+TEST(AttackTest, BishopAttacksEmpty){
+    EXPECT_EQ(popcount(bishop_attacks(D4, 0)), 13);
+}
+
+TEST(AttackTest, BishopAttacksBlocked){
+    Bitboard occ = Bitboard(1) << B6;
+    Bitboard atk = bishop_attacks(D4, occ);
+    EXPECT_TRUE(atk & (Bitboard(1) << B6));
+    EXPECT_FALSE(atk & (Bitboard(1) << A7));
+}

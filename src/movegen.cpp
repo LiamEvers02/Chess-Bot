@@ -1,6 +1,7 @@
 #include "position.h"
 #include "movegen.h"
 
+
 static void remove_piece(Position& pos, Square s){
     Piece p = pos.board[s];
     pos.board[s] = NO_PIECE;

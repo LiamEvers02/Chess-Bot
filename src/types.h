@@ -6,6 +6,14 @@
  using Bitboard = uint64_t;
  using Key = uint64_t;
 
+// Portable population count (number of set bits in a bitboard)
+#ifdef _MSC_VER
+  #include <intrin.h>
+  inline int popcount(Bitboard b) { return static_cast<int>(__popcnt64(b)); }
+#else
+  inline int popcount(Bitboard b) { return __builtin_popcountll(b); }
+#endif
+
  // Encoding colors as integers
  enum Color : int {
     WHITE = 0,
