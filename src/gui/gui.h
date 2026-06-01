@@ -11,8 +11,7 @@ public:
 
 private:
     sf::RenderWindow window;
-    sf::Texture pieceTexture;
-    sf::Sprite pieceSprites[COLOR_NB][PIECE_TYPE_NB];
+    sf::Font font;
     Position pos;
     Square selected;
 

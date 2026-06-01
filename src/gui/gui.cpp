@@ -1,32 +1,25 @@
 #include "gui.h"
 #include <SFML/Graphics.hpp>
 
-static const int TILE = 80; // Size of each square in pixels
+static const int TILE = 80;
 static const int W = TILE * 8;
 
 static sf::Color LIGHT = sf::Color(240, 217, 181);
-static sf::Color DARK = sf::Color(181, 136, 99);
-static sf::Color SEL = sf::Color(100, 200, 100, 150);
-static sf::Color HINT = sf::Color(100, 200, 100, 80);
+static sf::Color DARK  = sf::Color(181, 136,  99);
+static sf::Color SEL   = sf::Color(100, 200, 100, 150);
+static sf::Color HINT  = sf::Color(100, 200, 100,  80);
+
+// Unicode chess symbols indexed by [Color][PieceType]
+// Order matches PieceType enum: 0=NO_PIECE_TYPE,1=P,2=N,3=B,4=R,5=Q,6=K
+static const wchar_t* PIECE_GLYPH[COLOR_NB][PIECE_TYPE_NB] = {
+    { L"", L"\u2659", L"\u2658", L"\u2657", L"\u2656", L"\u2655", L"\u2654" }, // White
+    { L"", L"\u265F", L"\u265E", L"\u265D", L"\u265C", L"\u265B", L"\u265A" }, // Black
+};
 
 GUI::GUI() : window(sf::VideoMode(W, W), "Chess-Bot"), selected(NO_SQUARE) {
     init_attacks();
     set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    pieceTexture.loadFromFile("assets/pieces.png");
-
-    int sheetOrder[] = {KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN};
-    int tileW = pieceTexture.getSize().x / 6;
-    int tileH = pieceTexture.getSize().y / 2;
-    for (int col = 0; col < 6; col++){
-        for (int row = 0; row < 2; row++){
-            pieceSprites[row][sheetOrder[col]].setTexture(pieceTexture);
-            pieceSprites[row][sheetOrder[col]].setTextureRect(
-                sf::IntRect(col * tileW, row * tileH, tileW, tileH)
-            );
-            float scale = float(TILE) / tileW;
-            pieceSprites[row][sheetOrder[col]].setScale(scale, scale);
-        }
-    }
+    font.loadFromFile("C:/Windows/Fonts/seguisym.ttf");
 }
 
 void GUI::run() {
@@ -79,13 +72,26 @@ void GUI::drawHighlights() {
 }
 
 void GUI::drawPieces() {
-    for (Square s = A1; s < SQUARE_NB; s = Square(s + 1)){
+    for (Square s = A1; s < SQUARE_NB; s = Square(s + 1)) {
         Piece p = pos.piece_on(s);
         if (p == NO_PIECE) continue;
         PieceType pt = type_of(p);
         Color c = color_of(p);
-        pieceSprites[c][pt].setPosition(file_of(s) * TILE, (7 - rank_of(s)) * TILE);
-        window.draw(pieceSprites[c][pt]);
+
+        sf::Text text;
+        text.setFont(font);
+        text.setString(sf::String(PIECE_GLYPH[c][pt]));
+        text.setCharacterSize(60);
+        text.setFillColor(c == WHITE ? sf::Color::White : sf::Color(30, 30, 30));
+        text.setOutlineColor(c == WHITE ? sf::Color(80, 80, 80) : sf::Color::White);
+        text.setOutlineThickness(1.5f);
+
+        // Centre glyph within tile
+        sf::FloatRect bounds = text.getLocalBounds();
+        float px = file_of(s) * TILE + (TILE - bounds.width)  / 2.f - bounds.left;
+        float py = (7 - rank_of(s)) * TILE + (TILE - bounds.height) / 2.f - bounds.top;
+        text.setPosition(px, py);
+        window.draw(text);
     }
 }
 
