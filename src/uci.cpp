@@ -1,7 +1,7 @@
 #include "uci.h"
-#include "position.h"
-#include "movegen.h"
-#include "attacks.h"
+#include "engine/position.h"
+#include "engine/movegen.h"
+#include "engine/attacks.h"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -59,14 +59,14 @@ static void parse_go() {
 void uci_loop(){
     init_attacks();
     std::cout << "id name Chess-Bot\n";
-    std::cout << "id author Liam";
+    std::cout << "id author Liam\"\n";
     std::cout << "uciok\n";
 
     std::string line;
     while (std::getline(std::cin, line)){
         if (line == "uci") {
             std::cout << "id name Chess-Bot\n";
-            std::cout << "id author Liam";
+            std::cout << "id author Liam\"\n";
             std::cout << "uciok\n";
         }
         else if (line == "isready"){

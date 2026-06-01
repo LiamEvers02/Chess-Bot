@@ -3,12 +3,12 @@ project(Chess-Bot LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(chess_core
-    src/position.cpp
-    src/movegen.cpp
-    src/attacks.cpp
+add_library(chess_core STATIC
+    src/engine/position.cpp
+    src/engine/movegen.cpp
+    src/engine/attacks.cpp
 )
-target_include_directories(chess_core PUBLIC src)
+target_include_directories(chess_core PUBLIC src/engine)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -17,6 +17,12 @@ FetchContent_Declare(
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(googletest)
+FetchContent_Declare(
+    SFML
+    URL https://github.com/SFML/SFML/archive/refs/tags/2.6.2.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(SFML)
 
 enable_testing()
 
@@ -25,5 +31,25 @@ target_link_libraries(position_test PRIVATE chess_core GTest::gtest_main)
 
 add_test(NAME position_test COMMAND position_test)
 
+
+
+add_executable(chess_gui src/main_gui.cpp src/gui/gui.cpp)
+target_include_directories(chess_gui PRIVATE src)
+target_link_libraries(chess_gui PRIVATE chess_core sfml-graphics sfml-window sfml-system)
+
+add_custom_command(TARGET chess_gui POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:sfml-graphics>
+        $<TARGET_FILE:sfml-window>
+        $<TARGET_FILE:sfml-system>
+        $<TARGET_FILE_DIR:chess_gui>
+)
+add_custom_command(TARGET chess_gui POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:chess_gui>/assets
+)
+
 add_executable(chess_bot src/main.cpp src/uci.cpp)
+target_include_directories(chess_bot PRIVATE src)
 target_link_libraries(chess_bot PRIVATE chess_core)
