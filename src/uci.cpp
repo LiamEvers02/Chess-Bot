@@ -11,9 +11,11 @@ static Position pos;
 static void parse_position(const std::string& line){
     std::istringstream ss(line);
     std::string token;
-    ss >> token; // "position"
+    ss >> token; // consume "position"
+    ss >> token; // "startpos" or "fen"
     if (token == "startpos"){
         set(pos, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        ss >> token; // consume "moves" if present
     }
     else if (token == "fen"){
         std::string fen;
@@ -21,8 +23,9 @@ static void parse_position(const std::string& line){
             fen += token + " ";
         }
         set(pos, fen);
+        // token is now "moves" or ss is exhausted
     }
-    // Apply move list
+    // Apply move list — token may already be the first move (fen case) or next token (startpos case)
     while (ss >> token){
         Square from = make_square(token[0] - 'a', token[1] - '1');
         Square to = make_square(token[2] - 'a', token[3] - '1');
