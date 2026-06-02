@@ -210,7 +210,10 @@ std::vector<Move> generate_moves(const Position& pos){
         if (pos.can_castle(us == WHITE ? WHITE_KINGSIDE : BLACK_KINGSIDE)){
             Square f = us == WHITE ? F1 : F8;
             Square g = us == WHITE ? G1 : G8;
-            if (pos.empty(f) && pos.empty(g)){
+            if (pos.empty(f) && pos.empty(g)
+                && !is_square_attacked(pos, from, them)   // not in check
+                && !is_square_attacked(pos, f,    them))  // not through check
+            {
                 moves.push_back(make_move<CASTLING>(from, g));
             }
         }
@@ -218,7 +221,10 @@ std::vector<Move> generate_moves(const Position& pos){
             Square b = us == WHITE ? B1 : B8;
             Square c = us == WHITE ? C1 : C8;
             Square d = us == WHITE ? D1 : D8;
-            if (pos.empty(b) && pos.empty(c) && pos.empty(d)){
+            if (pos.empty(b) && pos.empty(c) && pos.empty(d)
+                && !is_square_attacked(pos, from, them)   // not in check
+                && !is_square_attacked(pos, d,    them))  // not through check
+            {
                 moves.push_back(make_move<CASTLING>(us == WHITE ? E1 : E8, c));
             }
         }

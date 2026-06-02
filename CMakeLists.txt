@@ -7,8 +7,9 @@ add_library(chess_core STATIC
     src/engine/position.cpp
     src/engine/movegen.cpp
     src/engine/attacks.cpp
+    src/search/search.cpp
 )
-target_include_directories(chess_core PUBLIC src/engine)
+target_include_directories(chess_core PUBLIC src/engine src)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -16,6 +17,8 @@ FetchContent_Declare(
     URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.zip
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
+set(BUILD_SHARED_LIBS OFF)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 FetchContent_Declare(
     SFML
@@ -28,8 +31,12 @@ enable_testing()
 
 add_executable(position_test tests/main_test.cpp)
 target_link_libraries(position_test PRIVATE chess_core GTest::gtest_main)
-
 add_test(NAME position_test COMMAND position_test)
+
+add_executable(search_test tests/search_test.cpp)
+target_include_directories(search_test PRIVATE src)
+target_link_libraries(search_test PRIVATE chess_core GTest::gtest_main)
+add_test(NAME search_test COMMAND search_test)
 
 
 

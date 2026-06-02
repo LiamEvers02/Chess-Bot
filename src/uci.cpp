@@ -2,6 +2,7 @@
 #include "engine/position.h"
 #include "engine/movegen.h"
 #include "engine/attacks.h"
+#include "search/search.h"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -43,7 +44,7 @@ static void parse_go() {
     // For now: return the first legal move
     auto moves = generate_legal_moves(pos);
     if (moves.empty()) { std::cout << "bestmove 0000\n"; return;}
-    Move m = moves[0];
+    Move m = best_move(pos, 6);
     std::string mv = "";
     mv += char('a' + file_of(from_sq(m)));
     mv += char('1' + rank_of(from_sq(m)));
@@ -59,14 +60,14 @@ static void parse_go() {
 void uci_loop(){
     init_attacks();
     std::cout << "id name Chess-Bot\n";
-    std::cout << "id author Liam\"\n";
+    std::cout << "id author Liam\n";
     std::cout << "uciok\n";
 
     std::string line;
     while (std::getline(std::cin, line)){
         if (line == "uci") {
             std::cout << "id name Chess-Bot\n";
-            std::cout << "id author Liam\"\n";
+            std::cout << "id author Liam\n";
             std::cout << "uciok\n";
         }
         else if (line == "isready"){

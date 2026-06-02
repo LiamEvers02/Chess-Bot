@@ -1,4 +1,5 @@
 #include "gui.h"
+#include "search/search.h"
 #include <SFML/Graphics.hpp>
 #include <random>
 #include <ctime>
@@ -42,15 +43,15 @@ void GUI::resetGame() {
 }
 
 std::string GUI::moveToString(Move m) {
-    static const char files[]     = "abcdefgh";
+    static const char files[] = "abcdefgh";
     static const char pieceChar[] = " PNBRQK";
 
-    Square    from = from_sq(m);
-    Square    to   = to_sq(m);
-    MoveType  mt   = type_of(m);
-    Piece     p    = pos.piece_on(from);
-    PieceType pt   = type_of(p);
-    Color     us   = color_of(p);
+    Square from = from_sq(m);
+    Square to = to_sq(m);
+    MoveType mt = type_of(m);
+    Piece p = pos.piece_on(from);
+    PieceType pt = type_of(p);
+    Color us = color_of(p);
 
     if (mt == CASTLING)
         return file_of(to) > file_of(from) ? "O-O" : "O-O-O";
@@ -157,14 +158,13 @@ void GUI::saveGame() {
 void GUI::engineMove() {
     auto moves = generate_legal_moves(pos);
     if (moves.empty()) return;
-    std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)));
-    applyMove(moves[rng() % moves.size()]);
+    applyMove(best_move(pos, 3));
 }
 
 void GUI::run() {
     while (window.isOpen()) {
         if (status == GameStatus::Playing && pos.side_to_move() != humanColor){
-            sleep(sf::milliseconds(500));  // Pause briefly before engine moves
+            sf::sleep(sf::milliseconds(200));  // Brief pause before engine moves
             engineMove();
         }
 
