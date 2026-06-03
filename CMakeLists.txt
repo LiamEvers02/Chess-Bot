@@ -8,6 +8,7 @@ add_library(chess_core STATIC
     src/engine/movegen.cpp
     src/engine/attacks.cpp
     src/search/search.cpp
+    src/search/eval.cpp
 )
 target_include_directories(chess_core PUBLIC src/engine src)
 
@@ -30,8 +31,8 @@ FetchContent_MakeAvailable(SFML)
 enable_testing()
 
 add_executable(position_test tests/main_test.cpp)
+target_include_directories(position_test PRIVATE src)
 target_link_libraries(position_test PRIVATE chess_core GTest::gtest_main)
-add_test(NAME position_test COMMAND position_test)
 
 add_executable(search_test tests/search_test.cpp)
 target_include_directories(search_test PRIVATE src)

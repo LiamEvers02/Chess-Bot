@@ -26,6 +26,7 @@ static const wchar_t* PIECE_GLYPH[COLOR_NB][PIECE_TYPE_NB] = {
 
 GUI::GUI() : window(sf::VideoMode(WINDOW_W, WINDOW_H), "Chess-Bot"), selected(NO_SQUARE), status(GameStatus::Playing) {
     init_attacks();
+    Zobrist::init();
     pieceFont.loadFromFile("C:/Windows/Fonts/seguisym.ttf");
     uiFont.loadFromFile("C:/Windows/Fonts/arial.ttf");
     resetGame();

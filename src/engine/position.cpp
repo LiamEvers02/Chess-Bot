@@ -4,6 +4,33 @@
 #include <iostream>
 #include <sstream>
 #include <cassert>
+#include <random>
+
+// Zobrist key tables
+namespace Zobrist {
+    uint64_t psq[COLOR_NB][PIECE_TYPE_NB][SQUARE_NB];
+    uint64_t castling[CASTLING_RIGHTS_NB];
+    uint64_t enPassant[FILE_NB];
+    uint64_t sideToMove;
+
+    void init() {
+        std::mt19937_64 rng(1070372ull); // fixed seed for reproducibility
+        auto rand64 = [&]() { return rng(); };
+
+        for (int c = 0; c < COLOR_NB; ++c)
+            for (int pt = 0; pt < PIECE_TYPE_NB; ++pt)
+                for (int s = 0; s < SQUARE_NB; ++s)
+                    psq[c][pt][s] = rand64();
+
+        for (int cr = 0; cr < CASTLING_RIGHTS_NB; ++cr)
+            castling[cr] = rand64();
+
+        for (int f = 0; f < FILE_NB; ++f)
+            enPassant[f] = rand64();
+
+        sideToMove = rand64();
+    }
+}
 
 // Helper functions to convert between pieces and characters for FEN parsing and display
 static Piece piece_from_char(char c){
@@ -88,6 +115,19 @@ void set(Position& pos, const std::string& fen){
         pos.enPassantSquare = make_square(epFile, epRank);
     }
     ss >> pos.halfMoveClock >> pos.fullMoveNumber;
+
+    // Compute Zobrist hash from scratch
+    pos.zobristHash = 0;
+    for (Square s = A1; s < SQUARE_NB; s = Square(s + 1)) {
+        Piece p = pos.board[s];
+        if (p != NO_PIECE)
+            pos.zobristHash ^= Zobrist::psq[color_of(p)][type_of(p)][s];
+    }
+    pos.zobristHash ^= Zobrist::castling[pos.castlingRights];
+    if (pos.enPassantSquare != NO_SQUARE)
+        pos.zobristHash ^= Zobrist::enPassant[pos.enPassantSquare % 8];
+    if (pos.sideToMove == BLACK)
+        pos.zobristHash ^= Zobrist::sideToMove;
 }
 
 // Function to print the position in a human-readable format

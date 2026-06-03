@@ -34,7 +34,12 @@ void do_move(Position& pos, Move m){
     st.enPassantSquare = pos.enPassantSquare;
     st.halfMoveClock = pos.halfMoveClock;
     st.capturedPiece = NO_PIECE;
+    st.zobristHash = pos.zobristHash;
 
+    pos.zobristHash ^= Zobrist::castling[pos.castlingRights];
+    if (pos.enPassantSquare != NO_SQUARE){
+        pos.zobristHash ^= Zobrist::enPassant[file_of(pos.enPassantSquare)];
+    }
     pos.enPassantSquare = NO_SQUARE;
     ++pos.halfMoveClock;
 
@@ -42,8 +47,15 @@ void do_move(Position& pos, Move m){
         bool kingside = file_of(to) == FILE_G;
         Square rookFrom = make_square(kingside ? FILE_H : FILE_A, rank_of(from));
         Square rookTo = make_square(kingside ? FILE_F : FILE_D, rank_of(from));
+
+        pos.zobristHash ^= Zobrist::psq[us][KING][from];
+        pos.zobristHash ^= Zobrist::psq[us][KING][rookFrom];
+
         move_piece(pos, from, to);
         move_piece(pos, rookFrom, rookTo);
+
+        pos.zobristHash ^= Zobrist::psq[us][KING][to];
+        pos.zobristHash ^= Zobrist::psq[us][ROOK][rookTo];
     }
     else {
         Square capSq = to;
@@ -52,21 +64,28 @@ void do_move(Position& pos, Move m){
         }
         if (pos.board[capSq] != NO_PIECE){
             st.capturedPiece = pos.board[capSq];
+            pos.zobristHash ^= Zobrist::psq[them][type_of(st.capturedPiece)][capSq];
             remove_piece(pos, capSq);
             pos.halfMoveClock = 0;
         }
 
+        pos.zobristHash ^= Zobrist::psq[us][type_of(pos.board[from])][from];
+
         move_piece(pos, from, to);
 
         if (mt == PROMOTION){
+            pos.zobristHash ^= Zobrist::psq[us][type_of(pos.board[to])][to];
             remove_piece(pos, to);
             put_piece(pos, to, make_piece(us, promotion_type(m)));
+        } else {
+            pos.zobristHash ^= Zobrist::psq[us][type_of(pos.board[to])][to];
         }
 
         if (type_of(pos.board[to]) == PAWN || mt == PROMOTION){
             pos.halfMoveClock = 0;
             if (abs(rank_of(to) - rank_of(from)) == 2){
                 pos.enPassantSquare = make_square(file_of(from), (rank_of(from) + rank_of(to)) / 2);
+                pos.zobristHash ^= Zobrist::enPassant[file_of(pos.enPassantSquare)];
             }
         }
     }
@@ -79,8 +98,11 @@ void do_move(Position& pos, Move m){
         if (from == A8 || to == A8){pos.castlingRights = pos.castlingRights & remove_castling(CastlingRights(BLACK_QUEENSIDE));}
     }
 
+    pos.zobristHash ^= Zobrist::castling[pos.castlingRights];
+
     if (us == BLACK){++pos.fullMoveNumber;}
     pos.sideToMove = them;
+    pos.zobristHash ^= Zobrist::sideToMove;
 }
 
 void undo_move(Position& pos, Move m){
@@ -103,6 +125,7 @@ void undo_move(Position& pos, Move m){
         pos.castlingRights  = st.castlingRights;
         pos.enPassantSquare = st.enPassantSquare;
         pos.halfMoveClock   = st.halfMoveClock;
+        pos.zobristHash     = st.zobristHash;
     }
     else {
         move_piece(pos, to, from);
@@ -121,9 +144,10 @@ void undo_move(Position& pos, Move m){
             put_piece(pos, capSq, st.capturedPiece);
         }
 
-        pos.castlingRights = st.castlingRights;
+        pos.castlingRights  = st.castlingRights;
         pos.enPassantSquare = st.enPassantSquare;
-        pos.halfMoveClock = st.halfMoveClock;
+        pos.halfMoveClock   = st.halfMoveClock;
+        pos.zobristHash     = st.zobristHash;
     }
 
     if (us == BLACK){--pos.fullMoveNumber;}

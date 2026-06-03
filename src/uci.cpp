@@ -59,6 +59,7 @@ static void parse_go() {
 
 void uci_loop(){
     init_attacks();
+    Zobrist::init();
     std::cout << "id name Chess-Bot\n";
     std::cout << "id author Liam\n";
     std::cout << "uciok\n";
