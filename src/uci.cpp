@@ -40,17 +40,45 @@ static void parse_position(const std::string& line){
 
 }
 
-static void parse_go() {
-    // For now: return the first legal move
+static void parse_go(const std::string& line) {
     auto moves = generate_legal_moves(pos);
-    if (moves.empty()) { std::cout << "bestmove 0000\n"; return;}
-    Move m = best_move(pos, 6);
-    std::string mv = "";
+    if (moves.empty()) { std::cout << "bestmove 0000\n"; return; }
+
+    // Parse time control parameters
+    std::istringstream ss(line);
+    std::string token;
+    int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, movetime = 0;
+    while (ss >> token) {
+        if      (token == "wtime")     ss >> wtime;
+        else if (token == "btime")     ss >> btime;
+        else if (token == "winc")      ss >> winc;
+        else if (token == "binc")      ss >> binc;
+        else if (token == "movestogo") ss >> movestogo;
+        else if (token == "movetime")  ss >> movetime;
+    }
+
+    int timeLimitMs = 0;
+    if (movetime > 0) {
+        // Fixed time per move — leave 20ms buffer for UCI overhead
+        timeLimitMs = movetime - 20;
+    } else {
+        int myTime = (pos.side_to_move() == WHITE) ? wtime : btime;
+        int myInc  = (pos.side_to_move() == WHITE) ? winc  : binc;
+        if (myTime > 0) {
+            // Assume ~25 moves remaining if movestogo not given
+            int moves_left = (movestogo > 0) ? movestogo : 25;
+            timeLimitMs = myTime / moves_left + myInc / 2 - 20;
+            if (timeLimitMs < 10) timeLimitMs = 10;
+        }
+    }
+
+    Move m = best_move(pos, 64, timeLimitMs); // depth 64 = effectively unlimited, time governs
+    std::string mv;
     mv += char('a' + file_of(from_sq(m)));
     mv += char('1' + rank_of(from_sq(m)));
     mv += char('a' + file_of(to_sq(m)));
     mv += char('1' + rank_of(to_sq(m)));
-    if (type_of(m) == PROMOTION){
+    if (type_of(m) == PROMOTION) {
         const char promo[] = {'n', 'b', 'r', 'q'};
         mv += promo[promotion_type(m) - KNIGHT];
     }
@@ -81,7 +109,7 @@ void uci_loop(){
             parse_position(line);
         }
         else if (line.rfind("go", 0) == 0){
-            parse_go();
+            parse_go(line);
         }
         else if (line == "quit"){
             break;

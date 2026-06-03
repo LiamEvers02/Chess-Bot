@@ -3,6 +3,33 @@
 
 const int PIECE_VALUE[PIECE_TYPE_NB] = { 0, 100, 320, 330, 500, 900, 0 };
 
+// File bitboard masks
+static constexpr Bitboard FILE_BB[8] = {
+    0x0101010101010101ULL, 0x0202020202020202ULL,
+    0x0404040404040404ULL, 0x0808080808080808ULL,
+    0x1010101010101010ULL, 0x2020202020202020ULL,
+    0x4040404040404040ULL, 0x8080808080808080ULL,
+};
+
+// Squares strictly ahead on files (f-1, f, f+1) — used for passed pawn detection
+static Bitboard passer_span_white(Square s) {
+    int f = file_of(s), r = rank_of(s);
+    if (r >= 7) return 0;
+    Bitboard col = FILE_BB[f];
+    if (f > 0) col |= FILE_BB[f - 1];
+    if (f < 7) col |= FILE_BB[f + 1];
+    return col & (~0ULL << ((r + 1) * 8));
+}
+
+static Bitboard passer_span_black(Square s) {
+    int f = file_of(s), r = rank_of(s);
+    if (r <= 0) return 0;
+    Bitboard col = FILE_BB[f];
+    if (f > 0) col |= FILE_BB[f - 1];
+    if (f < 7) col |= FILE_BB[f + 1];
+    return col & (0xFFFFFFFFFFFFFFFFULL >> ((8 - r) * 8));
+}
+
 static const int PST_MG_PAWN[64] = {
      0,  0,  0,  0,  0,  0,  0,  0,
      5, 10, 10,-20,-20, 10, 10,  5,
@@ -152,6 +179,20 @@ static const int* PST_EG[PIECE_TYPE_NB] = {
     PST_EG_KING,
 };
 
+// ─── Structural bonus / penalty constants ────────────────────────────────────
+static const int PASSED_MG[8]   = {  0,  0, 10, 20, 35, 55, 80,  0 };
+static const int PASSED_EG[8]   = {  0,  0, 20, 40, 65, 95,140,  0 };
+static const int DOUBLED_MG     = -10;
+static const int DOUBLED_EG     = -20;
+static const int ISOLATED_MG    = -15;
+static const int ISOLATED_EG    = -15;
+static const int BISHOP_PAIR_MG =  20;
+static const int BISHOP_PAIR_EG =  50;
+static const int ROOK_OPEN_MG   =  25;
+static const int ROOK_OPEN_EG   =  15;
+static const int ROOK_SEMI_MG   =  10;
+static const int ROOK_SEMI_EG   =   6;
+
 static int phase(const Position& pos) {
     int ph = 0;
     for (Square s = A1; s < SQUARE_NB; s = Square(s + 1)) {
@@ -187,6 +228,8 @@ static int pst_bonus(PieceType pt, Color c, Square s, int ph) {
 int evaluate(const Position& pos) {
     int ph = phase(pos);
     int score = 0;
+
+    // PST + material
     for (Square s = A1; s < SQUARE_NB; s = Square(s + 1)) {
         Piece p = pos.piece_on(s);
         if (p == NO_PIECE) continue;
@@ -195,5 +238,58 @@ int evaluate(const Position& pos) {
         int val = PIECE_VALUE[pt] + pst_bonus(pt, c, s, ph);
         score += (c == WHITE) ? val : -val;
     }
+
+    // Tapered blend helper
+    auto taper = [&](int mg, int eg) { return (ph * mg + (24 - ph) * eg) / 24; };
+
+    // Structural evaluation (pawn structure, bishop pair, rook files)
+    for (int ci = 0; ci < 2; ci++) {
+        Color c        = Color(ci);
+        int   sign     = (c == WHITE) ? 1 : -1;
+        Bitboard pawns     = pos.pieces(c, PAWN);
+        Bitboard opp_pawns = pos.pieces(~c, PAWN);
+
+        // Per-file: doubled and isolated pawn penalties
+        for (int f = 0; f < 8; f++) {
+            int cnt = popcount(pawns & FILE_BB[f]);
+            if (cnt == 0) continue;
+            if (cnt > 1)
+                score += sign * (cnt - 1) * taper(DOUBLED_MG, DOUBLED_EG);
+            Bitboard adj = 0;
+            if (f > 0) adj |= FILE_BB[f - 1];
+            if (f < 7) adj |= FILE_BB[f + 1];
+            if ((pawns & adj) == 0)
+                score += sign * cnt * taper(ISOLATED_MG, ISOLATED_EG);
+        }
+
+        // Per-pawn: passed pawn bonus
+        Bitboard b = pawns;
+        while (b) {
+            Square s = lsb(b); b &= b - 1;
+            Bitboard span = (c == WHITE) ? passer_span_white(s) : passer_span_black(s);
+            if ((span & opp_pawns) == 0) {
+                int r = (c == WHITE) ? rank_of(s) : 7 - rank_of(s);
+                score += sign * taper(PASSED_MG[r], PASSED_EG[r]);
+            }
+        }
+
+        // Bishop pair
+        if (popcount(pos.pieces(c, BISHOP)) >= 2)
+            score += sign * taper(BISHOP_PAIR_MG, BISHOP_PAIR_EG);
+
+        // Rook on open / semi-open file
+        Bitboard rooks = pos.pieces(c, ROOK);
+        while (rooks) {
+            Square s = lsb(rooks); rooks &= rooks - 1;
+            int f = file_of(s);
+            bool no_own = (pos.pieces(c,  PAWN) & FILE_BB[f]) == 0;
+            bool no_opp = (pos.pieces(~c, PAWN) & FILE_BB[f]) == 0;
+            if (no_own && no_opp)
+                score += sign * taper(ROOK_OPEN_MG, ROOK_OPEN_EG);
+            else if (no_own)
+                score += sign * taper(ROOK_SEMI_MG, ROOK_SEMI_EG);
+        }
+    }
+
     return (pos.side_to_move() == WHITE) ? score : -score;
 }

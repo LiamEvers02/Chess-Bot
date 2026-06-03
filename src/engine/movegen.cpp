@@ -153,6 +153,32 @@ void undo_move(Position& pos, Move m){
     if (us == BLACK){--pos.fullMoveNumber;}
 }
 
+void do_null_move(Position& pos) {
+    StateInfo& st = pos.history[pos.historyPly++];
+    st.castlingRights  = pos.castlingRights;
+    st.enPassantSquare = pos.enPassantSquare;
+    st.halfMoveClock   = pos.halfMoveClock;
+    st.capturedPiece   = NO_PIECE;
+    st.zobristHash     = pos.zobristHash;
+
+    if (pos.enPassantSquare != NO_SQUARE)
+        pos.zobristHash ^= Zobrist::enPassant[file_of(pos.enPassantSquare)];
+    pos.zobristHash ^= Zobrist::sideToMove;
+
+    pos.enPassantSquare = NO_SQUARE;
+    pos.sideToMove = ~pos.sideToMove;
+    pos.halfMoveClock++;
+}
+
+void undo_null_move(Position& pos) {
+    StateInfo& st = pos.history[--pos.historyPly];
+    pos.sideToMove      = ~pos.sideToMove;
+    pos.enPassantSquare = st.enPassantSquare;
+    pos.castlingRights  = st.castlingRights;
+    pos.halfMoveClock   = st.halfMoveClock;
+    pos.zobristHash     = st.zobristHash;
+}
+
 // Function to generate all possible moves for the current position
 std::vector<Move> generate_moves(const Position& pos){
     std::vector<Move> moves;
