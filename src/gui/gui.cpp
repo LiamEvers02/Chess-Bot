@@ -159,7 +159,7 @@ void GUI::saveGame() {
 void GUI::engineMove() {
     auto moves = generate_legal_moves(pos);
     if (moves.empty()) return;
-    applyMove(best_move(pos, 3));
+    applyMove(best_move(pos, 10, 100000));
 }
 
 void GUI::run() {

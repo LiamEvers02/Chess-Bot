@@ -153,7 +153,12 @@ static int minimax(Position& pos, int depth, int alpha, int beta, int ply, bool 
     return best;
 }
 
-Move best_move(Position& pos, int maxDepth, int timeLimitMs) {
+Move best_move(Position& pos, int depth, int timeLimitMs) {
+    g_startTime   = Clock::now();
+    g_timeLimitMs = timeLimitMs;
+    g_stop        = false;
+    g_nodeCount   = 0;
+
     auto moves = generate_legal_moves(pos);
     if (moves.empty()) return Move{};
     memset(killers, 0, sizeof(killers));
@@ -169,36 +174,28 @@ Move best_move(Position& pos, int maxDepth, int timeLimitMs) {
     int prevScore = 0;
     const int DELTA = 50;
 
-
-    for (int d = 1; d <= maxDepth; d++) {
-        int alpha = (d > 1) ? prevScore - DELTA: -INF;
-        int beta = (d > 1) ? prevScore + DELTA : INF;
+    for (int d = 1; d <= depth; d++) {
+        int alpha = (d > 1) ? prevScore - DELTA : -INF;
+        int beta  = (d > 1) ? prevScore + DELTA : INF;
         bool retried = false;
 
-        retry:
+    retry:
         Move iterBest = moves[0];
         int bestScore = -INF;
         for (Move m : moves) {
             do_move(pos, m);
             int score = -minimax(pos, d - 1, -beta, -alpha, 1);
             undo_move(pos, m);
-            if (score > bestScore) { bestScore = score; iterBest = m;}
+            if (score > bestScore) { bestScore = score; iterBest = m; }
             if (score > alpha) alpha = score;
             if (alpha >= beta) break;
         }
 
         if (!retried && bestScore <= prevScore - DELTA && d > 1) {
-            alpha = -INF;
-            beta = INF;
-            retried = true;
-            goto retry;
+            alpha = -INF; beta = INF; retried = true; goto retry;
         }
-
         if (!retried && bestScore >= prevScore + DELTA && d > 1) {
-            alpha = -INF;
-            beta = INF;
-            retried = true;
-            goto retry;
+            alpha = -INF; beta = INF; retried = true; goto retry;
         }
 
         best = iterBest;
@@ -206,9 +203,7 @@ Move best_move(Position& pos, int maxDepth, int timeLimitMs) {
         auto it = std::find(moves.begin(), moves.end(), best);
         if (it != moves.begin()) std::rotate(moves.begin(), it, it + 1);
 
-        // Stop iterating if time is up (keep best from last completed iteration)
         if (g_stop || out_of_time()) break;
     }
     return best;
 }
-
