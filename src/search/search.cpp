@@ -153,19 +153,24 @@ static int minimax(Position& pos, int depth, int alpha, int beta, int ply, bool 
     return best;
 }
 
-Move best_move(Position& pos, int depth) {
+Move best_move(Position& pos, int maxDepth, int timeLimitMs) {
     auto moves = generate_legal_moves(pos);
     if (moves.empty()) return Move{};
     memset(killers, 0, sizeof(killers));
     memset(history, 0, sizeof(history));
     order_moves(pos, moves, 0);
 
+    g_startTime   = Clock::now();
+    g_timeLimitMs = timeLimitMs;
+    g_stop        = false;
+    g_nodeCount   = 0;
+
     Move best = moves[0];
     int prevScore = 0;
     const int DELTA = 50;
 
 
-    for (int d = 1; d <= depth; d++) {
+    for (int d = 1; d <= maxDepth; d++) {
         int alpha = (d > 1) ? prevScore - DELTA: -INF;
         int beta = (d > 1) ? prevScore + DELTA : INF;
         bool retried = false;
